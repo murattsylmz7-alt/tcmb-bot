@@ -1,34 +1,37 @@
 import os
 import requests
-from curl_cffi import requests as cffi_requests
 
-# EVDS API URL
+# EVDS3 doğrudan veri çekme endpoint'i
 URL = "https://evds3.tcmb.gov.tr/service/evds/series=TP.AB.A02&startDate=01-01-2025&endDate=31-12-2026&type=json"
 
 headers = {
     "key": "El2gYsoqfe",
-    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36",
+    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
     "Accept": "application/json, text/plain, */*",
-    "Accept-Language": "tr-TR,tr;q=0.9,en-US;q=0.8,en;q=0.7",
+    "Origin": "https://evds3.tcmb.gov.tr",
     "Referer": "https://evds3.tcmb.gov.tr/"
 }
 
 def verileri_al_ve_gonder():
+    session = requests.Session()
     try:
-        # API anahtarını URL yerine Header üzerinden göndererek güvenlik kontrolünü aşıyoruz
-        response = cffi_requests.get(URL, headers=headers, impersonate="chrome120", timeout=30)
+        # Önce ana sayfaya bağlanıp çerez (cookie) oturumu başlatıyoruz
+        session.get("https://evds3.tcmb.gov.tr/", headers=headers, timeout=15)
+        
+        # Ardından veri servisine istek atıyoruz
+        response = session.get(URL, headers=headers, timeout=30)
         
         if response.status_code != 200:
             print(f"HTTP Hatası: {response.status_code}")
-            print("Gelen Yanıt:", response.text[:200])
             return
 
         try:
             data = response.json()
         except Exception:
-            print("Sunucu JSON döndürmedi. Dönen içerik:")
-            print(response.text[:300])
-            return
+            # Alternatif XML/JSON servisi denemesi
+            alt_url = "https://evds2.tcmb.gov.tr/service/evds/series=TP.AB.A02&startDate=01-01-2025&endDate=31-12-2026&type=json&key=El2gYsoqfe"
+            response = session.get(alt_url, headers=headers, timeout=30)
+            data = response.json()
 
         items = data.get("items", [])
         gecerli_veriler = [i for i in items if i.get("TP_AB_A02") is not None and i.get("TP_AB_A02") != ""]
