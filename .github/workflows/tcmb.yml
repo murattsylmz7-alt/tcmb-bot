@@ -4,11 +4,11 @@ on:
   schedule:
     # Her Cuma TSİ 18:00'de otomatik çalışır
     - cron: '0 15 * * 5'
-  workflow_dispatch: # Manuel çalıştırma butonu ekler
+  workflow_dispatch: # Manuel çalıştırma butonu
 
 jobs:
   run-bot:
-    runs-runs-on: ubuntu-latest
+    runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
       - name: Python Kur
