@@ -1,0 +1,24 @@
+name: TCMB Veri Tetikleyici
+
+on:
+  schedule:
+    # Her Cuma TSİ 18:00'de otomatik çalışır
+    - cron: '0 15 * * 5'
+  workflow_dispatch: # Manuel çalıştırma butonu ekler
+
+jobs:
+  run-bot:
+    runs-runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - name: Python Kur
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.10'
+      - name: Kütüphaneleri Yükle
+        run: pip install requests
+      - name: Kodu Çalıştır
+        env:
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+        run: python main.py
