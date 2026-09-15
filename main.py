@@ -1,38 +1,29 @@
 import os
 import requests
+from curl_cffi import requests as cffi_requests
 
-# CSV formatı Cloudflare/EVDS JSON filtresine takılmaz
-URL = "https://evds3.tcmb.gov.tr/service/evds/series=TP.AB.A02&startDate=01-01-2025&endDate=31-12-2026&type=csv&key=El2gYsoqfe"
-
-headers = {
-    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
-    "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8"
-}
+# EVDS API URL (Görünür veri çekmek için tarih aralığı geniş tutulmuştur)
+URL = "https://evds3.tcmb.gov.tr/service/evds/series=TP.AB.A02&startDate=01-01-2025&endDate=31-12-2026&type=json&key=El2gYsoqfe"
 
 def verileri_al_ve_gonder():
     try:
-        response = requests.get(URL, headers=headers, timeout=30)
+        # Chrome 120 parmak izi ile istek atarak Cloudflare/TCMB engelini aşıyoruz
+        response = cffi_requests.get(URL, impersonate="chrome120", timeout=30)
         
-        # Yanıt metnini al
-        metin = response.text.strip()
-        
-        # Eğer HTML döndüyse uyar
-        if "<!DOCTYPE" in metin or "<html" in metin:
-            print("TCMB sunucusu HTML engel sayfası döndürdü.")
+        if response.status_code != 200:
+            print(f"HTTP Hatası: {response.status_code}")
             return
 
-        satirlar = [s for s in metin.splitlines() if s.strip()]
+        data = response.json()
+        items = data.get("items", [])
         
-        if len(satirlar) > 1:
-            # En son açıklanan rezerv satırını al
-            son_satir = satirlar[-1]
-            
-            # CSV ayırıcı kontrolü (virgül veya noktalı virgül)
-            ayrac = ";" if ";" in son_satir else ","
-            parcalar = son_satir.split(ayrac)
-            
-            tarih = parcalar[0].replace('"', '')
-            rezerv = parcalar[1].replace('"', '') if len(parcalar) > 1 else "Bilinmiyor"
+        # Henüz verisi girilmemiş boş günleri filtreleyelim
+        gecerli_veriler = [i for i in items if i.get("TP_AB_A02") is not None]
+        
+        if gecerli_veriler:
+            son_veri = gecerli_veriler[-1]
+            tarih = son_veri.get("Tarih", "Bilinmiyor")
+            rezerv = son_veri.get("TP_AB_A02", "Bilinmiyor")
             
             mesaj = f"🏛 **TCMB Haftalık Rezerv Verisi**\n\n📅 **Tarih:** {tarih}\n💰 **Toplam Rezerv:** {rezerv} Bin USD"
             print("Gönderilecek Mesaj:\n", mesaj)
@@ -48,7 +39,7 @@ def verileri_al_ve_gonder():
             else:
                 print("Telegram Token veya Chat ID eksik!")
         else:
-            print("Veri satırı bulunamadı.")
+            print("Geçerli rezerv verisi bulunamadı.")
             
     except Exception as e:
         print("Hata oluştu:", e)
